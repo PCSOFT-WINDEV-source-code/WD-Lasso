@@ -1,0 +1,387 @@
+#To edit and compare internal_properties, use WINDEV integrated tools.
+#Internal properties refer to the properties of controls in windows, reports, etc.
+info :
+ name : CLasso
+ major_version : 28
+ minor_version : 0
+ type : 4
+ description : ""
+ subtype : 0
+class :
+ identifier : 0x3dabe26c276f0d94
+ internal_properties : CAAAAAgAAAB2/vstTMCJbS/hlxjFxirSqKvCUuv8YxgpWyl7S3iA
+ code_elements :
+  internal_properties : CAAAAAgAAAAb8HaVbu2AxmhlOEsF7scMqJh1jDZ8NwiBdFjFp1kQDo601eQGzl3hi75zdjkQ9yj1prQk+mEqpYrvtU9JOyszchghMZ30MvM=
+  type_code : 10
+  p_codes :
+   -
+     internal_properties : CAAAAAgAAADemYISDTqlWEOes06SF2x/uwCB/bSlJO5ZI/eDVe/2DxfovDntLfcP7tpbGXVCL9T3gG9/g72FBC8Asj1vMHOLeMOKNxrOg6D12RIwFdAZbY615I1lzTX7l+3/jkx/XjFiiRuvnxkOpU6nTw==
+     code : |1+
+      EXTERN “Winconst.wl”			// Import the Windows constants
+      
+      CLasso is Class
+      	// Coordinates of the selection lasso
+      	m_PointX1, m_PointY1 are int
+      	m_PointX2, m_PointY2 are int
+      	
+      	// Sorted coordinates of the selection lasso
+      	m_TopLeftX, m_TopLeftY are int
+      	m_BottomRightX, m_BottomRightY are int
+      	m_nWidth, m_nHeight are int
+      	
+      	// Name of image control
+      	m_sImgControl is string
+      	
+      	// Name of Callback procedures defined by the user
+      	m_sOverviewProcedure is string
+      	ms_ClickProcedure is string
+      	
+      END
+     type : 131072
+  procedures :
+   -
+     name : Constructor
+     procedure_id : 4443894411517431198
+     type_code : 27
+     code : |1-
+      Procedure Constructor(sImgControl,bActivateEvent=False)
+      
+      // Store the name of the image control
+      :m_sImgControl = sImgControl
+      
+      // Specify the rollover cursor of the image control
+      {:m_sImgControl,indControl}..MouseCursor = curCross
+      
+      // Management by event or by the user?
+      IF bActivateEvent = True THEN
+      	Event(:ClickLeft, :m_sImgControl, ::WM_LBUTTONDOWN)
+      	Event(:MouseRollover, :m_sImgControl, ::WM_MOUSEMOVE)
+      END
+      
+      // No user procedure is called by default
+      :m_sOverviewProcedure = “”
+      :ms_ClickProcedure = “”
+     type : 589824
+   -
+     name : Destructor
+     procedure_id : 4443894411688152478
+     type_code : 28
+     code : |1+
+      Procedure Destructor()
+      
+     type : 655360
+   -
+     name : NewLasso
+     procedure_id : 4443894587978657892
+     type_code : 12
+     code : |1+
+      Procedure NewLasso()
+      
+      // Reinitialize the position of the selection
+      :m_PointX1 = MouseXPos()
+      :m_PointY1 = MouseYPos() 
+      :m_PointX2 = MouseXPos()
+      :m_PointY2 = MouseYPos()
+      
+      // Sort the coordinates
+      :CoordinateSorting() 
+      
+      // Start of drawing
+      dStartDrawing(:m_sImgControl)
+      
+      //Change the drawing mode
+      dPen(iWhite,iDashed)
+      dChangeMode(drawXOR)
+     type : 458752
+   -
+     name : MoveLasso
+     procedure_id : 4443894639564087335
+     type_code : 12
+     code : |1+
+      Procedure MoveLasso()
+      
+      // Is the left mouse button down?
+      IF KeyPressed(kpLButton) THEN
+      	
+      	// Define the position of the mouse in the image control
+      	Res is int = CursorPos(cpClient)
+      	
+      	// Check whether the position of the mouse has changed
+      	IF ((LoWord(Res)=:m_PointX2) AND (HiWord(Res)=:m_PointY2)) THEN 
+      		Multitask(-5)
+      		RESULT True
+      	END
+      	
+      	// Delete the drawing of the former lasso if necessary
+      	IF :m_PointX1<>:m_PointX2 AND :m_PointY1<>:m_PointY2 THEN		
+      		:DrawLasso(:m_TopLeftX,:m_TopLeftY,:m_BottomRightX,:m_BottomRightY)
+      	END
+      	
+      	// Manage the right border of the image control
+      	IF LoWord(Res)>{:m_sImgControl,indControl}..X+{:m_sImgControl,indControl}..Width THEN				
+      		IF :m_PointX1>:m_PointX2 THEN
+      			:m_PointX1={:m_sImgControl,indControl}..Width
+      		ELSE
+      			:m_PointX2={:m_sImgControl,indControl}..Width
+      		END
+      	END
+      	
+      	// Manage the bottom border of the image control
+      	IF HiWord(Res)>{:m_sImgControl,indControl}..Y+{:m_sImgControl,indControl}..Height THEN		
+      		IF :m_PointY1>:m_PointY2 THEN
+      			:m_PointY1={:m_sImgControl,indControl}..Height
+      		ELSE
+      			:m_PointY2={:m_sImgControl,indControl}..Height
+      		END
+      	END
+      	
+      	// Manage the left border of the image
+      	IF LoWord(Res)<{:m_sImgControl,indControl}..X THEN		
+      		IF :m_PointX1>:m_PointX2 THEN
+      			:m_PointX2=0
+      		ELSE
+      			:m_PointX1=0
+      		END
+      	END
+      	
+      	// Manage the top border of the image
+      	IF HiWord(Res)<{:m_sImgControl,indControl}..Y THEN		
+      		IF :m_PointY1>:m_PointY2 THEN
+      			:m_PointY2=0
+      		ELSE
+      			:m_PointY1=0
+      		END
+      	END
+      	
+      	// Store the new position of the mouse
+      	:m_PointX2=MouseXPos()
+      	:m_PointY2=MouseYPos()
+      	
+      	// Sort the coordinates of the selection lasso
+      	:CoordinateSorting()
+      	
+      	// Draw the selection area
+      	:DrawLasso(:m_TopLeftX,:m_TopLeftY,:m_BottomRightX,:m_BottomRightY)	
+      	
+      ELSE
+      	// No need to take processor time
+      	Multitask(-1)
+      END
+      RESULT True
+     type : 458752
+   -
+     name : sLassoCoordinates
+     procedure_id : 4443894729086873489
+     type_code : 12
+     code : |1-
+      PROCEDURE sLassoCoordinates()
+      
+      // Return the coordinates of the selection lasso
+      RESULT :m_TopLeftX+TAB+:m_TopLeftY+CR+:m_BottomRightX+TAB+:m_BottomRightY+CR+:m_nWidth+TAB+:m_nHeight
+     type : 458752
+   -
+     name : CoordinateSorting
+     procedure_id : 4443895047467782151
+     type_code : 12
+     code : |1+
+      Procedure PRIVATE CoordinateSorting()
+      
+      // Initialize the coordinates
+      :m_TopLeftX = :m_PointX1
+      :m_TopLeftY = :m_PointY1
+      :m_BottomRightX = :m_PointX2
+      :m_BottomRightY = :m_PointY2
+      
+      // Sort the coordinates to distinguish the Top Left corner from the Bottom Right corner
+      xTemp,yTemp are int
+      IF :m_TopLeftX>:m_BottomRightX THEN
+      	xTemp=:m_TopLeftX
+      	:m_TopLeftX=:m_BottomRightX
+      	:m_BottomRightX=xTemp
+      END
+      IF :m_TopLeftY>:m_BottomRightY THEN
+      	yTemp=:m_TopLeftY
+      	:m_TopLeftY=:m_BottomRightY
+      	:m_BottomRightY=yTemp
+      END
+      
+      // Store the height and width
+      :m_nHeight = :m_BottomRightY-:m_TopLeftY
+      :m_nWidth = :m_BottomRightX-:m_TopLeftX
+     type : 458752
+   -
+     name : DrawLasso
+     procedure_id : 4443898699146348663
+     type_code : 12
+     code : |1+
+      Procedure PRIVATE DrawLasso(X1,Y1,X2,Y2)
+      
+      // Draw a line if overlaid lines
+      IF X1 = X2 THEN
+      	dLine(X1,Y1,X2,Y2,iTransparent)		
+      	RETURN
+      END
+      
+      IF Y1 = Y2 THEN
+      	dLine(X1,Y1,X2,Y2,iTransparent)			
+      	RETURN	
+      END
+      
+      // Draw the lasso (reminder: use dChangeMode to switch to XOR mode)
+      dRectangle(X1-1,Y1-1,X2+1,Y2+1,iTransparent)	
+     type : 458752
+   -
+     name : DisplayImageSelection
+     internal_properties : CAAAAAgAAADn8SnJN57g1tiK9EDuEfhLRZ+DgR5P+0sIi1Ov/Kh9203VYe7gzRrhQ/2BBztJZLigTYsOB5l4sUUkUrPk7inaBXspfETkydmBI64oUcVh2GlK5S8EjaY9smYxvgTCnqB1SsIp+hlSOdJ3hAQxzwlpq4uQVLDVxbk7r75STmgcRuWcBTiJ3H1cWZFrpPvaAA==
+     procedure_id : 4443911221668661459
+     type_code : 12
+     code : |1-
+      Procedure DisplayImageSelection(sImagDestControlName)
+      
+      IF :m_nWidth=0 OR :m_nHeight = 0 THEN RETURN
+      
+      // Respect the selection ratio regarding the proportions of the image control
+      fSelectionRatio is real
+      IF :m_nHeight<>:m_nWidth THEN	
+      	fSelectionRatio = Abs(:m_nHeight/:m_nWidth)
+      ELSE
+      	fSelectionRatio = 1
+      END
+      IF :m_nWidth > sImagDestControlName..InitialWidth THEN
+      	// The selection is larger than the preview: stretch in width
+      	IF :m_nHeight > sImagDestControlName..Height THEN
+      		// The size of the selection exceeds the size of the preview: reduce the image		
+      		IF fSelectionRatio > 1 THEN
+      			// The image height exceeds the image width
+      			sImagDestControlName..Height = sImagDestControlName..InitialHeight
+      			sImagDestControlName..Width = sImagDestControlName..Height/fSelectionRatio
+      		ELSE
+      			// The image width exceeds the image height
+      			sImagDestControlName..Height = sImagDestControlName..Width*fSelectionRatio
+      			sImagDestControlName..Width = sImagDestControlName..InitialWidth
+      		END
+      	ELSE
+      		// The image fits in height, let's adapt the width
+      		sImagDestControlName..Width = :m_nWidth
+      		sImagDestControlName..Height = sImagDestControlName..InitialHeight
+      	END
+      ELSE
+      	// The preview is larger than the selection: ability to zoom
+      	IF :m_nHeight > sImagDestControlName..InitialHeight THEN
+      		// The image must be adapted in height, adapt the height to keep the ratio of the image
+      		sImagDestControlName..Width = sImagDestControlName..Height/fSelectionRatio
+      		sImagDestControlName..Height = sImagDestControlName..InitialHeight
+      	ELSE
+      		// the image is smaller than the selection, maximum zoom
+      		IF fSelectionRatio > 1 THEN
+      			// The image height exceeds the image width
+      			sImagDestControlName..Height = sImagDestControlName..InitialHeight
+      			sImagDestControlName..Width = sImagDestControlName..Height/fSelectionRatio			
+      		ELSE
+      			// The image width exceeds the image height
+      			sImagDestControlName..Height = sImagDestControlName..Width*fSelectionRatio			
+      			sImagDestControlName..Width = sImagDestControlName..InitialWidth
+      		END
+      	END
+      END
+      
+      // Limit the dimension of the viewing control
+      IF sImagDestControlName..Width>sImagDestControlName..InitialWidth THEN sImagDestControlName..Width=sImagDestControlName..InitialWidth
+      IF sImagDestControlName..Height>sImagDestControlName..InitialHeight THEN sImagDestControlName..Height=sImagDestControlName..InitialHeight
+      
+      // Free the resources
+      dEndDrawing(sImagDestControlName)
+      
+      // Copy the content of the selection lasso to the destination image control
+      dCopyBlt(:m_sImgControl,sImagDestControlName,copySrcCopy,...
+      :m_TopLeftX+1,...
+      :m_TopLeftY+1,...		
+      :m_nHeight-1,...
+      :m_nWidth-1)	
+      			
+     type : 458752
+   -
+     name : ClickLeft
+     internal_properties : CAAAAAgAAADU4qG7qk8ThOF/VuI9kNqMOGDin4gf4xAvtyj/RYHB+owuCz4kVAzwqviNLuYzzKGOt/lb6Jsgo7cvKCpo74ZiX1r7azDanTEBi5C1N36Cf0W5Eesxrg==
+     procedure_id : 4443995730151209138
+     type_code : 12
+     code : |1-
+      // Automatic process of exceptions:   run CASE EXCEPTION:
+      //
+      Procedure PRIVATE  ClickLeft()
+      
+      // Standard operating mode
+      :NewLasso()
+      
+      // Using the procedure defined by the user
+      IF NOT :ms_ClickProcedure~=“” THEN
+      	ExecuteProcess(:ms_ClickProcedure,trtProcedure)
+      END
+      
+      CASE EXCEPTION:
+      Error(<§$0002§>,ExceptionInfo())
+     type : 458752
+   -
+     name : MouseRollover
+     internal_properties : CAAAAAgAAADU4qG7qk8ThOF/VuI9kNqMOGDin4gf4xAvtyj/RYHB+owuCz4kVAzwqviNLuYzzKGOt/lb6Jsgo7cvKCpo74ZiX1r7azDanTEBi5C1N36Cf0W5Eesxrg==
+     procedure_id : 4443995764504533210
+     type_code : 12
+     code : |1-
+      // Automatic process of exceptions:   run CASE EXCEPTION:
+      //
+      Procedure PRIVATE MouseRollover()
+      
+      // Standard operating mode
+      :MoveLasso()
+      
+      // Using the procedure defined by the user
+      IF NOT :m_sOverviewProcedure~=“” THEN
+      	ExecuteProcess(:m_sOverviewProcedure,trtProcedure)
+      	
+      END
+      CASE EXCEPTION:
+      Error(<§$0002§>,ExceptionInfo())
+     type : 458752
+   -
+     name : ManageRollover
+     procedure_id : 4444001606462396096
+     type_code : 12
+     code : |1-
+      Procedure ManageRollover(sNameCallbackProc)
+      
+      // Stores the user procedure that will be run when the image control is hovered
+      :m_sOverviewProcedure = sNameCallbackProc
+     type : 458752
+   -
+     name : ManageClick
+     procedure_id : 4444003341681558580
+     type_code : 12
+     code : |1-
+      Procedure ManageClick(sNameCallbackProc)
+      
+      // Stores the user procedure that will be run when the image control is clicked
+      :ms_ClickProcedure = sNameCallbackProc
+     type : 458752
+  procedure_templates : []
+  property_templates : []
+ code_parameters :
+  internal_properties : CAAAAAgAAACVGQgYbalU7DKC3oH4ItDrjtcTHXXV/EuH8q0IbhyQlw==
+resources :
+ string_res :
+  identifier : 0x3dabe265132ff495
+  internal_properties : CAAAAAgAAACm76HWfKGWp33VjXInA4cRlqArlgTTA862QGt72W2ld5Y=
+  strings :
+   -
+     text :
+      en-GB : ":LeftClick"
+     index : 0
+   -
+     text :
+      en-GB : MouseRollover
+     index : 1
+   -
+     text :
+      en-GB : Error calling the user procedure
+     index : 2
+custom_note :
+ internal_properties : CAAAAAgAAABtB9HWVzrXO2+4NDRVK0vmzaNKrCKqH1DBX30lMmGZ
